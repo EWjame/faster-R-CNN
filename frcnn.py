@@ -27,11 +27,11 @@ RESIZE_TO = args.imgsize # resize the image for training and transforms
 NUM_EPOCHS = args.epoch # number of epochs to train for
 # training images and XML files directory
 # TRAIN_DIR = './data/pascalVoc_oral/train'
-TRAIN_DIR = '.'+ data['train']
+TRAIN_DIR = data['train']
 
 # validation images and XML files directory
 # VALID_DIR = './data/pascalVoc_oral/valid'
-VALID_DIR = '.'+ data['valid']
+VALID_DIR = data['valid']
 # classes: 0 index is reserved for background
 # CLASSES = ['background', 'oral']
 

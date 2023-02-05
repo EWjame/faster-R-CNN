@@ -14,7 +14,7 @@ from utils.config import DEVICE,CLASSES,NUM_CLASSES
 def create_model(num_classes):
     
     # load Faster RCNN pre-trained model
-    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True)
+    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights = torchvision.models.detection.FasterRCNN_ResNet50_FPN_Weights.DEFAULT)
     
     # get the number of input features 
     in_features = model.roi_heads.box_predictor.cls_score.in_features
