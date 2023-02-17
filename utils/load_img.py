@@ -19,8 +19,12 @@ class LoadDataset(Dataset):
         
         # get all the image paths in sorted order
         self.image_paths = glob.glob(f"{self.dir_path}/*.jpg")
-        self.all_images = [image_path.split('\\')[-1] for image_path in self.image_paths]
+        if len(self.image_paths[0].split("\\"))>1:
+            self.all_images = [image_path.split("\\")[-1] for image_path in self.image_paths]
+        else:
+            self.all_images = [image_path.split("/")[-1] for image_path in self.image_paths]
         self.all_images = sorted(self.all_images)
+
     def __getitem__(self, idx):
         # capture the image name and the full image path
         image_name = self.all_images[idx]

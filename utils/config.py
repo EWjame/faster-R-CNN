@@ -14,6 +14,9 @@ parser.add_argument('-bs','--batchsize', type=int,default=4)
 parser.add_argument('-img','--imgsize', type=tuple,default=(512,512))
 parser.add_argument('-e','--epoch',type=int,default=2)
 parser.add_argument('--data',type=str,default='./data/data.yaml')
+parser.add_argument('--backbone',type=str,default='resnet50')
+parser.add_argument('--weights',type=str,default=None)
+parser.add_argument('--model',type=str,default="fasterRCNN")
 
 # Parse the argument
 args = parser.parse_args()

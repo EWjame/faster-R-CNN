@@ -4,22 +4,61 @@ from torchvision.models.detection.faster_rcnn import FastRCNNPredictor
 import tqdm
 import numpy as np
 
+try:
+    from utils.config import DEVICE,CLASSES,NUM_CLASSES
+except:
+    DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    print("Just using function")
 
-from utils.config import DEVICE,CLASSES,NUM_CLASSES
+#weights Example
 
-# import sys        
-# sys.path.append('../') 
-# from frcnn import train_loss_list,val_loss_list,train_loss_hist,val_loss_hist
+#torchvision.models.detection.FasterRCNN_ResNet50_FPN_Weights.DEFAULT
 
-def create_model(num_classes):
+def create_model(num_classes,model_name,backbone="resnet50",weights=None):
+    if weights.lower() == "true":
+        weights= True
+    else:
+        weights= False
     
-    # load Faster RCNN pre-trained model
-    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights = torchvision.models.detection.FasterRCNN_ResNet50_FPN_Weights.DEFAULT)
-    
-    # get the number of input features 
-    in_features = model.roi_heads.box_predictor.cls_score.in_features
-    # define a new head for the detector with required number of classes
-    model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes) 
+
+    if model_name.lower() == "fasterrcnn":
+        # load Faster RCNN pre-trained model
+        if backbone.lower() == "resnet50":
+            if weights ==True:
+                weights  = torchvision.models.detection.FasterRCNN_ResNet50_FPN_Weights.DEFAULT
+
+            model = torchvision.models.detection.fasterrcnn_resnet50_fpn(weights = weights )
+        elif backbone.lower() == "resnet50v2":
+            if weights ==True:
+                weights  = torchvision.models.detection.FasterRCNN_ResNet50_FPN_V2_Weights.DEFAULT
+            model = torchvision.models.detection.fasterrcnn_resnet50_fpn_v2(weights = weights)
+        elif backbone.lower() == "mobilehigh":
+            if weights ==True:
+                weights  = torchvision.models.detection.FasterRCNN_MobileNet_V3_Large_FPN_Weights.DEFAULT
+
+            model = torchvision.models.detection.fasterrcnn_mobilenet_v3_large_fpn(weights = weights)
+        elif backbone.lower() == "mobilelow":
+            if weights ==True:
+                weights  = torchvision.models.detection.FasterRCNN_MobileNet_V3_Large_320_FPN_Weights.DEFAULT
+
+            model = torchvision.models.detection.fasterrcnn_mobilenet_v3_large_320_fpn(weights = weights)
+        else:
+            print("Backbone not Found")
+
+        # get the number of input features 
+        in_features = model.roi_heads.box_predictor.cls_score.in_features
+        # define a new head for the detector with required number of classes
+        model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes) 
+    elif model_name.lower() == "ssdlite":
+        print("Model : SSDLite")
+        if backbone == "mobilenet":
+            print("Backbone : Mobilenetv3")
+            if weights ==True:
+                    weights  = torchvision.models.detection.SSDLite320_MobileNet_V3_Large_Weights.DEFAULT.DEFAULT
+
+            model = torchvision.models.detection.ssdlite320_mobilenet_v3_large(weights = weights)
+
+
     return model
 
 

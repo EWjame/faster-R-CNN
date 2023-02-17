@@ -6,6 +6,7 @@ import cv2
 import tqdm as tqdm
 import numpy as np
 import glob as glob
+import pandas as pd
 import time
 import matplotlib.pyplot as plt
 # from config import CLASSES, RESIZE_TO, TRAIN_DIR, VALID_DIR, BATCH_SIZE
@@ -20,23 +21,25 @@ from utils.custom_utils import (Averager,collate_fn, get_train_transform, get_va
 
 
 
-
-
 BATCH_SIZE = args.batchsize # increase / decrease according to GPU memeory
 RESIZE_TO = args.imgsize # resize the image for training and transforms
 NUM_EPOCHS = args.epoch # number of epochs to train for
+WEIGHTS = args.weights #Weigth
+MODEL_N = args.model
+
 # training images and XML files directory
 # TRAIN_DIR = './data/pascalVoc_oral/train'
 TRAIN_DIR = data['train']
-
+print("train dir :",TRAIN_DIR)
 # validation images and XML files directory
 # VALID_DIR = './data/pascalVoc_oral/valid'
 VALID_DIR = data['valid']
+print("valid dir :",VALID_DIR)
 # classes: 0 index is reserved for background
 # CLASSES = ['background', 'oral']
 
 
-print(BATCH_SIZE,RESIZE_TO,TRAIN_DIR)
+print("Batch Size:",BATCH_SIZE,"Images Size :",RESIZE_TO)
 
 
 NUM_CLASSES = len(CLASSES)
@@ -55,6 +58,24 @@ os.mkdir(OUT_DIR)
 
 SAVE_PLOTS_EPOCH = 2 # save loss plots after these many epochs
 SAVE_MODEL_EPOCH = 2 # save model after these many epochs
+
+dets = {
+    "OutPath":f"output{index}",
+    "images_path":TRAIN_DIR,
+    "labels_path":VALID_DIR,
+    "Class Number":NUM_CLASSES,
+    "Class":CLASSES,
+    "Images Size":RESIZE_TO,
+    "Epochs":NUM_EPOCHS,
+    "Batch":BATCH_SIZE,
+    "Weights":WEIGHTS,
+    "Optimizer":"SGD",
+    "Lr":0.001,
+    "Momentum Rate":0.9,
+}
+
+
+
 
 
 train_dataset = LoadDataset(TRAIN_DIR, RESIZE_TO[0], RESIZE_TO[1], CLASSES)
@@ -81,7 +102,8 @@ valid_loader = DataLoader(
 )
 print(f"Number of training samples: {len(train_dataset)}")
 print(f"Number of validation samples: {len(valid_dataset)}\n")
-
+dets['Number of training samples'] = len(train_dataset)
+dets['Number of validate samples'] = len(valid_dataset)
 
 
 # initialize the Averager class
@@ -94,12 +116,12 @@ val_itr = 1
 train_loss_list = []
 val_loss_list = []
 
-model = create_model(num_classes=NUM_CLASSES)
+model = create_model(num_classes=NUM_CLASSES,backbone=args.backbone,weights=args.weights)
 model = model.to(DEVICE)
 # get the model parameters
 params = [p for p in model.parameters() if p.requires_grad]
 # define the optimizer
-optimizer = torch.optim.SGD(params, lr=0.001, momentum=0.9, weight_decay=0.0005)
+optimizer = torch.optim.SGD(params, lr=dets["Lr"], momentum=0.9, weight_decay=0.0005)
 
 # name to save the trained model with
 MODEL_NAME = 'model'
@@ -160,3 +182,17 @@ for epoch in range(NUM_EPOCHS):
         torch.save(model.state_dict(), f"{OUT_DIR}/model{index}.pth")
 
     plt.close('all')
+
+
+
+train_df = pd.DataFrame([])
+train_df["train_loss"] = train_loss_list
+val_df = pd.DataFrame([])
+val_df["valid_loss"] = val_loss_list
+train_df.to_csv(OUT_DIR+"/train_result.csv",index=False)
+val_df.to_csv(OUT_DIR+"/val_result.csv",index=False)
+
+f = open(OUT_DIR+"/opt.txt", "w")
+for k,v in dets.items():
+    f.write(str(k)+" : "+str(v)+"\n")
+f.close()
