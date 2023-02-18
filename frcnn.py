@@ -1,6 +1,6 @@
 import torch
 import yaml
-
+import argparse
 import os
 import cv2
 import tqdm as tqdm
@@ -14,10 +14,45 @@ from torch.utils.data import Dataset, DataLoader
 # from utils import collate_fn, get_train_transform, get_valid_transform
 
 #import utils file
-from utils.config import data,DEVICE,args,CLASSES
+# from utils.config import data,DEVICE,args,CLASSES
 from utils.load_img import LoadDataset
 from utils.model import train,validate,create_model
 from utils.custom_utils import (Averager,collate_fn, get_train_transform, get_valid_transform,SaveBestModel)
+
+
+#Config Parser
+
+#Device for train images
+DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+# Create the parser
+parser = argparse.ArgumentParser()
+
+# Add an argument
+parser.add_argument('-bs','--batchsize', type=int,default=4)
+parser.add_argument('-img','--imgsize', type=tuple,default=(512,512))
+parser.add_argument('-e','--epoch',type=int,default=2)
+parser.add_argument('--data',type=str,default='./data/data.yaml')
+parser.add_argument('--backbone',type=str,default='resnet50')
+parser.add_argument('--weights',type=str,default=None)
+parser.add_argument('--model',type=str,default="fasterRCNN")
+
+# Parse the argument
+args = parser.parse_args()
+
+data_path = args.data  
+
+#load data path
+with open(data_path, "r") as stream:
+    try:
+        data = yaml.safe_load(stream)
+    except yaml.YAMLError as exc:
+        print(exc)
+
+
+CLASSES = data['class']
+NUM_CLASSES = len(CLASSES)
+
 
 
 
@@ -116,6 +151,7 @@ val_itr = 1
 train_loss_list = []
 val_loss_list = []
 
+#Get model
 model = create_model(num_classes=NUM_CLASSES,backbone=args.backbone,weights=args.weights)
 model = model.to(DEVICE)
 # get the model parameters
