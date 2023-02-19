@@ -16,7 +16,7 @@ from torch.utils.data import Dataset, DataLoader
 #import utils file
 # from utils.config import data,DEVICE,args,CLASSES
 from utils.load_img import LoadDataset
-from utils.model import train,validate,create_model
+from utils.model import create_model,Model
 from utils.custom_utils import (Averager,collate_fn, get_train_transform, get_valid_transform,SaveBestModel)
 
 
@@ -35,7 +35,7 @@ parser.add_argument('-e','--epoch',type=int,default=2)
 parser.add_argument('--data',type=str,default='./data/data.yaml')
 parser.add_argument('--backbone',type=str,default='resnet50')
 parser.add_argument('--weights',type=str,default=None)
-parser.add_argument('--model',type=str,default="fasterRCNN")
+parser.add_argument('--model',type=str,default="fasterrcnn")
 
 # Parse the argument
 args = parser.parse_args()
@@ -54,14 +54,15 @@ CLASSES = data['class']
 NUM_CLASSES = len(CLASSES)
 
 
-
-
 BATCH_SIZE = args.batchsize # increase / decrease according to GPU memeory
 RESIZE_TO = args.imgsize # resize the image for training and transforms
 NUM_EPOCHS = args.epoch # number of epochs to train for
-WEIGHTS = args.weights #Weigth
 MODEL_N = args.model
-
+BACKBONE = args.backbone
+if args.weights.lower() == "true":
+    WEIGHTS = True #set Weigth true 
+else:
+    WEIGHTS = None #set Weigth = false
 # training images and XML files directory
 # TRAIN_DIR = './data/pascalVoc_oral/train'
 TRAIN_DIR = data['train']
@@ -72,7 +73,6 @@ VALID_DIR = data['valid']
 print("valid dir :",VALID_DIR)
 # classes: 0 index is reserved for background
 # CLASSES = ['background', 'oral']
-
 
 print("Batch Size:",BATCH_SIZE,"Images Size :",RESIZE_TO)
 
@@ -91,8 +91,8 @@ OUT_DIR = OUT_DIR+f"/output{index}"
 print(OUT_DIR)
 os.mkdir(OUT_DIR)
 
-SAVE_PLOTS_EPOCH = 2 # save loss plots after these many epochs
-SAVE_MODEL_EPOCH = 2 # save model after these many epochs
+# SAVE_PLOTS_EPOCH = 2 # save loss plots after these many epochs
+# SAVE_MODEL_EPOCH = 2 # save model after these many epochs
 
 dets = {
     "OutPath":f"output{index}",
@@ -109,15 +109,18 @@ dets = {
     "Momentum Rate":0.9,
 }
 
-
-
-
+model_detail = {
+    "num_class":NUM_CLASSES,
+    "model_name": MODEL_N,
+    "backbone": BACKBONE,
+    "weights":WEIGHTS,
+}
 
 train_dataset = LoadDataset(TRAIN_DIR, RESIZE_TO[0], RESIZE_TO[1], CLASSES)
 valid_dataset = LoadDataset(VALID_DIR, RESIZE_TO[0], RESIZE_TO[1], CLASSES)
 
-print(train_dataset.all_images[0])
-print(train_dataset.dir_path)
+# print(train_dataset.all_images[0])
+# print(train_dataset.dir_path)
 
 #Data Loader
 
@@ -152,74 +155,25 @@ train_loss_list = []
 val_loss_list = []
 
 #Get model
-model = create_model(num_classes=NUM_CLASSES,backbone=args.backbone,weights=args.weights)
+model = create_model(num_classes=NUM_CLASSES,model_name=MODEL_N,backbone=BACKBONE,weights=WEIGHTS)
 model = model.to(DEVICE)
 # get the model parameters
 params = [p for p in model.parameters() if p.requires_grad]
 # define the optimizer
 optimizer = torch.optim.SGD(params, lr=dets["Lr"], momentum=0.9, weight_decay=0.0005)
 
-# name to save the trained model with
-MODEL_NAME = 'model'
+
 # whether to show transformed images from data loader or not
 if VISUALIZE_TRANSFORMED_IMAGES:
     from utils import show_tranformed_image
     show_tranformed_image(train_loader)
 
-# initialize SaveBestModel class
-save_best_model = SaveBestModel()
+mymodel = Model(train_loader,valid_loader,2,model,train_loss_hist,val_loss_hist,optimizer)
+mymodel.save_path(OUT_DIR)
 
-# start the training epochs
-for epoch in range(NUM_EPOCHS):
-    print(f"\nEPOCH {epoch+1} of {NUM_EPOCHS}")
-    # reset the training and validation loss histories for the current epoch
-    train_loss_hist.reset()
-    val_loss_hist.reset()
-    # create two subplots, one for each, training and validation
-    figure_1, train_ax = plt.subplots()
-    figure_2, valid_ax = plt.subplots()
-    # start timer and carry out training and validation
-    start = time.time()
-    train_loss = train(train_loader, model,train_loss_list,train_itr,train_loss_hist,optimizer)
-    val_loss = validate(valid_loader, model,val_loss_list,val_itr,val_loss_hist,optimizer)
-    print(f"Epoch #{epoch} train loss: {train_loss_hist.value:.3f}")   
-    print(f"Epoch #{epoch} validation loss: {val_loss_hist.value:.3f}")   
-    end = time.time()
-    print(f"Took {((end - start) / 60):.3f} minutes for epoch {epoch}")
-    
-    save_best_model(
-        val_loss_hist.value, epoch, model, optimizer,OUT_DIR
-    )
-
-    if (epoch+1) % SAVE_MODEL_EPOCH == 0: # save model after every n epochs
-        torch.save(model.state_dict(), f"{OUT_DIR}/model{index}.pth")
-        print('SAVING MODEL COMPLETE...\n')
-
-    if (epoch+1) % SAVE_PLOTS_EPOCH == 0: # save loss plots after n epochs
-        train_ax.plot(train_loss, color='blue')
-        train_ax.set_xlabel('iterations')
-        train_ax.set_ylabel('train loss')
-        valid_ax.plot(val_loss, color='red')
-        valid_ax.set_xlabel('iterations')
-        valid_ax.set_ylabel('validation loss')
-        figure_1.savefig(f"{OUT_DIR}/train_loss_{index}.png")
-        figure_2.savefig(f"{OUT_DIR}/valid_loss_{index}.png")
-        print('SAVING PLOTS COMPLETE...')
-
-    if (epoch+1) == NUM_EPOCHS: # save loss plots and model once at the end
-        train_ax.plot(train_loss, color='blue')
-        train_ax.set_xlabel('iterations')
-        train_ax.set_ylabel('train loss')
-        valid_ax.plot(val_loss, color='red')
-        valid_ax.set_xlabel('iterations')
-        valid_ax.set_ylabel('validation loss')
-        figure_1.savefig(f"{OUT_DIR}/train_loss_{index}.png")
-        figure_2.savefig(f"{OUT_DIR}/valid_loss_{index}.png")
-        torch.save(model.state_dict(), f"{OUT_DIR}/model{index}.pth")
-
-    plt.close('all')
-
-
+h,model = mymodel.fit()
+train_loss_list = h[0]
+val_loss_hist = h[1]
 
 train_df = pd.DataFrame([])
 train_df["train_loss"] = train_loss_list
@@ -230,5 +184,10 @@ val_df.to_csv(OUT_DIR+"/val_result.csv",index=False)
 
 f = open(OUT_DIR+"/opt.txt", "w")
 for k,v in dets.items():
+    f.write(str(k)+" : "+str(v)+"\n")
+f.close()
+
+f = open(OUT_DIR+"/md.txt", "w")
+for k,v in model_detail.items():
     f.write(str(k)+" : "+str(v)+"\n")
 f.close()

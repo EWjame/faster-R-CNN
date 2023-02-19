@@ -18,10 +18,6 @@ DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cp
 #torchvision.models.detection.FasterRCNN_ResNet50_FPN_Weights.DEFAULT
 
 def create_model(num_classes,model_name,backbone="resnet50",weights=None):
-    if weights.lower() == "true":
-        weights= True
-    else:
-        weights= False
     
 
     if model_name.lower() == "fasterrcnn":
@@ -129,6 +125,13 @@ def create_model(num_classes,model_name,backbone="resnet50",weights=None):
 #     return val_loss_list
 
 
+def load_model(path,weights,name,backbone):
+    model = create_model(num_classes=2,model_name=name,backbone=backbone,weights=weights)
+    checkpoint = torch.load("./myExperiment/exp2/best_model.pth",map_location=torch.device('cpu'))
+    model.load_state_dict(checkpoint['model_state_dict'])
+    
+    return model
+
 
 class Model():
 
@@ -235,7 +238,7 @@ class Model():
             )
 
             if (epoch+1) % self.SAVE_MODEL_EPOCH == 0: # save model after every n epochs
-                torch.save(self.model.state_dict(), f"{self.OUT_DIR}/model{index}.pth")
+                torch.save(self.model.state_dict(), f"{self.OUT_DIR}/model_last.pth")
                 print('SAVING MODEL COMPLETE...\n')
 
             if (epoch+1) % self.SAVE_PLOTS_EPOCH == 0: # save loss plots after n epochs
@@ -245,8 +248,8 @@ class Model():
                 valid_ax.plot(val_loss, color='red')
                 valid_ax.set_xlabel('iterations')
                 valid_ax.set_ylabel('validation loss')
-                figure_1.savefig(f"{self.OUT_DIR}/train_loss_{index}.png")
-                figure_2.savefig(f"{self.OUT_DIR}/valid_loss_{index}.png")
+                figure_1.savefig(f"{self.OUT_DIR}/train_loss.png")
+                figure_2.savefig(f"{self.OUT_DIR}/valid_loss.png")
                 print('SAVING PLOTS COMPLETE...')
 
             if (epoch+1) == self.epochs: # save loss plots and model once at the end
@@ -256,10 +259,13 @@ class Model():
                 valid_ax.plot(val_loss, color='red')
                 valid_ax.set_xlabel('iterations')
                 valid_ax.set_ylabel('validation loss')
-                figure_1.savefig(f"{self.OUT_DIR}/train_loss_{index}.png")
-                figure_2.savefig(f"{self.OUT_DIR}/valid_loss_{index}.png")
-                torch.save(self.model.state_dict(), f"{self.OUT_DIR}/model{index}.pth")
+                figure_1.savefig(f"{self.OUT_DIR}/train_loss.png")
+                figure_2.savefig(f"{self.OUT_DIR}/valid_loss.png")
+                torch.save(self.model.state_dict(), f"{self.OUT_DIR}/model_last.pth")
 
             plt.close('all')
 
-        return (train_loss,val_loss)
+
+        return (train_loss,val_loss),self.model
+
+
