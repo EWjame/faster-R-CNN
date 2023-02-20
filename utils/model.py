@@ -137,7 +137,7 @@ class Model():
 
 
     
-    def __init__(self,train_data_loader,valid_data_loader,epochs, model,train_loss_hist,val_loss_hist,optimizer,save_best=True):
+    def __init__(self,train_data_loader,valid_data_loader,epochs, model,train_loss_hist,val_loss_hist,optimizer,save_best=True,plot_type = "epochs"):
         self.train_data_loader = train_data_loader
         self.valid_data_loader = valid_data_loader
 
@@ -147,6 +147,7 @@ class Model():
         self.train_loss_hist = train_loss_hist
         self.val_loss_hist = val_loss_hist
 
+        self.plot_type = plot_type
         self.train_itr,self.val_itr = 1,1
         self.train_loss_list ,self.val_loss_list= [],[]
         self.SAVE_PLOTS_EPOCH = 1 # save loss plots after these many epochs
@@ -216,6 +217,9 @@ class Model():
     
     def fit(self):
         # start the training epochs
+
+        train_loss_per_epoch,val_loss_per_epoch = [],[]
+
         for epoch in range(self.epochs):
             print(f"\nEPOCH {epoch+1} of {self.epochs}")
             # reset the training and validation loss histories for the current epoch
@@ -241,30 +245,57 @@ class Model():
                 torch.save(self.model.state_dict(), f"{self.OUT_DIR}/model_last.pth")
                 print('SAVING MODEL COMPLETE...\n')
 
-            if (epoch+1) % self.SAVE_PLOTS_EPOCH == 0: # save loss plots after n epochs
-                train_ax.plot(train_loss, color='blue')
-                train_ax.set_xlabel('iterations')
-                train_ax.set_ylabel('train loss')
-                valid_ax.plot(val_loss, color='red')
-                valid_ax.set_xlabel('iterations')
-                valid_ax.set_ylabel('validation loss')
-                figure_1.savefig(f"{self.OUT_DIR}/train_loss.png")
-                figure_2.savefig(f"{self.OUT_DIR}/valid_loss.png")
-                print('SAVING PLOTS COMPLETE...')
+            train_loss_per_epoch.append(train_loss[-1])
+            val_loss_per_epoch.append(val_loss[-1])
+            if self.plot_type == "epochs":
+                if (epoch+1) % self.SAVE_PLOTS_EPOCH == 0: # save loss plots after n epochs
+                    train_ax.plot(train_loss_per_epoch, color='blue')
+                    train_ax.set_xlabel('epochs')
+                    train_ax.set_ylabel('train loss')
+                    valid_ax.plot(val_loss_per_epoch, color='red')
+                    valid_ax.set_xlabel('epochs')
+                    valid_ax.set_ylabel('validation loss')
+                    figure_1.savefig(f"{self.OUT_DIR}/train_loss.png")
+                    figure_2.savefig(f"{self.OUT_DIR}/valid_loss.png")
+                    print('SAVING PLOTS COMPLETE...')
 
-            if (epoch+1) == self.epochs: # save loss plots and model once at the end
-                train_ax.plot(train_loss, color='blue')
-                train_ax.set_xlabel('iterations')
-                train_ax.set_ylabel('train loss')
-                valid_ax.plot(val_loss, color='red')
-                valid_ax.set_xlabel('iterations')
-                valid_ax.set_ylabel('validation loss')
-                figure_1.savefig(f"{self.OUT_DIR}/train_loss.png")
-                figure_2.savefig(f"{self.OUT_DIR}/valid_loss.png")
-                torch.save(self.model.state_dict(), f"{self.OUT_DIR}/model_last.pth")
+                if (epoch+1) == self.epochs: # save loss plots and model once at the end
+                    train_ax.plot(train_loss_per_epoch, color='blue')
+                    train_ax.set_xlabel('epochs')
+                    train_ax.set_ylabel('train loss')
+                    valid_ax.plot(val_loss_per_epoch, color='red')
+                    valid_ax.set_xlabel('epochs')
+                    valid_ax.set_ylabel('validation loss')
+                    figure_1.savefig(f"{self.OUT_DIR}/train_loss.png")
+                    figure_2.savefig(f"{self.OUT_DIR}/valid_loss.png")
+                    torch.save(self.model.state_dict(), f"{self.OUT_DIR}/model_last.pth")
+
+            elif self.plot_type == "iterations":
+                if (epoch+1) % self.SAVE_PLOTS_EPOCH == 0: # save loss plots after n epochs
+                    train_ax.plot(train_loss, color='blue')
+                    train_ax.set_xlabel('epochs')
+                    train_ax.set_ylabel('train loss')
+                    valid_ax.plot(val_loss, color='red')
+                    valid_ax.set_xlabel('epochs')
+                    valid_ax.set_ylabel('validation loss')
+                    figure_1.savefig(f"{self.OUT_DIR}/train_loss.png")
+                    figure_2.savefig(f"{self.OUT_DIR}/valid_loss.png")
+                    print('SAVING PLOTS COMPLETE...')
+
+                if (epoch+1) == self.epochs: # save loss plots and model once at the end
+                    train_ax.plot(train_loss, color='blue')
+                    train_ax.set_xlabel('epochs')
+                    train_ax.set_ylabel('train loss')
+                    valid_ax.plot(val_loss, color='red')
+                    valid_ax.set_xlabel('epochs')
+                    valid_ax.set_ylabel('validation loss')
+                    figure_1.savefig(f"{self.OUT_DIR}/train_loss.png")
+                    figure_2.savefig(f"{self.OUT_DIR}/valid_loss.png")
+                    torch.save(self.model.state_dict(), f"{self.OUT_DIR}/model_last.pth")
 
             plt.close('all')
-
+        if self.plot_type == "epochs":
+            train_loss,val_loss = train_loss_per_epoch,val_loss_per_epoch
 
         return (train_loss,val_loss),self.model
 

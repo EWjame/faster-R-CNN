@@ -168,7 +168,7 @@ if VISUALIZE_TRANSFORMED_IMAGES:
     from utils import show_tranformed_image
     show_tranformed_image(train_loader)
 
-mymodel = Model(train_loader,valid_loader,2,model,train_loss_hist,val_loss_hist,optimizer)
+mymodel = Model(train_loader,valid_loader,NUM_EPOCHS,model,train_loss_hist,val_loss_hist,optimizer)
 mymodel.save_path(OUT_DIR)
 
 h,model = mymodel.fit()
