@@ -10,12 +10,13 @@ from torch.utils.data import Dataset, DataLoader
 
 
 class LoadDataset(Dataset):
-    def __init__(self, dir_path, width, height, classes, transforms=None):
+    def __init__(self, dir_path, width, height, classes, normalize=True, transforms=None):
         self.transforms = transforms
         self.dir_path = dir_path
         self.height = height
         self.width = width
         self.classes = classes
+        self.normalize = normalize
         
         # get all the image paths in sorted order
         self.image_paths = glob.glob(f"{self.dir_path}/*.jpg")
@@ -67,10 +68,18 @@ class LoadDataset(Dataset):
             
             # resize the bounding boxes according to the...
             # ... desired `width`, `height`
-            xmin_final = (xmin/image_width)*self.width
-            xmax_final = (xmax/image_width)*self.width
-            ymin_final = (ymin/image_height)*self.height
-            yamx_final = (ymax/image_height)*self.height
+            if self.normalize == False:
+                # Default Code
+                xmin_final = (xmin/image_width)*self.width
+                xmax_final = (xmax/image_width)*self.width
+                ymin_final = (ymin/image_height)*self.height
+                yamx_final = (ymax/image_height)*self.height
+            elif self.normalize == True:            
+                #Own Change range to 0-1 for bbox size
+                xmin_final = (xmin/image_width)
+                xmax_final = (xmax/image_width)
+                ymin_final = (ymin/image_height)
+                yamx_final = (ymax/image_height)
             
             boxes.append([xmin_final, ymin_final, xmax_final, yamx_final])
         
