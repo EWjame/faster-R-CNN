@@ -10,7 +10,7 @@ from utils.custom_utils import (Averager,collate_fn, get_train_transform, get_va
 # try:
 #     from utils.config import DEVICE,CLASSES,NUM_CLASSES
 # except:
-DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+# DEVICE = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     # print("Just using function")
 
 #weights Example
@@ -48,6 +48,7 @@ def create_model(num_classes,model_name,backbone="resnet50",weights=None):
         in_features = model.roi_heads.box_predictor.cls_score.in_features
         # define a new head for the detector with required number of classes
         model.roi_heads.box_predictor = FastRCNNPredictor(in_features, num_classes) 
+        # model.roi_heads.box_roi_pool.featmap_names = list(map(str,range(num_classes)))
     elif model_name.lower() == "ssdlite":
         print("Model : SSDLite")
         if backbone == "mobilenet":
@@ -137,7 +138,7 @@ class Model():
 
 
     
-    def __init__(self,train_data_loader,valid_data_loader,epochs, model,train_loss_hist,val_loss_hist,optimizer,save_best=True,plot_type = "epochs"):
+    def __init__(self,train_data_loader,valid_data_loader,epochs, model,train_loss_hist,val_loss_hist,optimizer,save_best=True,plot_type = "epochs",DEVICE="cuda"):
         self.train_data_loader = train_data_loader
         self.valid_data_loader = valid_data_loader
 
@@ -152,6 +153,14 @@ class Model():
         self.train_loss_list ,self.val_loss_list= [],[]
         self.SAVE_PLOTS_EPOCH = 1 # save loss plots after these many epochs
         self.SAVE_MODEL_EPOCH = 1 # save model after these many epochs
+       
+        if DEVICE == 0:
+            self.DEVICE = torch.device(0)
+        elif DEVICE == 1:
+            self.DEVICE = torch.device(1)
+        else:
+            self.DEVICE = torch.device('cuda')
+
         if save_best == True:
             self.save_best_model = SaveBestModel()
             
@@ -166,23 +175,28 @@ class Model():
         for i, data in enumerate(prog_bar):
             self.optimizer.zero_grad()
             images, targets = data
-            
+#             plt.imshow(images[0])
+#             print("0",type(images),np.array(images).shape)
             #To Tensor
             images = torch.tensor(np.array(images),dtype=(torch.float))
-
-            images = [images[0].to(DEVICE)]
-            # print(len(images),images[0].shape)
+#             print("1",len(images),type(images))
+            images = images.to(self.DEVICE)
+#             print("2",len(images),images.shape)
+#             [print(image.shape) for image in images]
             images =  [image.reshape(3,image.shape[0],image.shape[1]) for image in images]
-            images = list(image.to(DEVICE) for image in images)
-            targets = [{k: v.to(DEVICE) for k, v in t.items()} for t in targets]
+#             print("3",len(images))
+#             images = list(image.to(DEVICE) for image in images)
+            targets = [{k: v.to(self.DEVICE) for k, v in t.items()} for t in targets]
             
 
             loss_dict = self.model(images, targets)
             losses = sum(loss for loss in loss_dict.values())
+            print(losses)
             loss_value = losses.item()
             self.train_loss_list.append(loss_value)
             self.train_loss_hist.send(loss_value)
             losses.backward()
+            print(losses)
             self.optimizer.step()
             self.train_itr += 1
         
@@ -199,10 +213,10 @@ class Model():
             images, targets = data
             images = torch.tensor(np.array(images),dtype=(torch.float))
 
-            images = [images[0].to(DEVICE)]
+            images = images.to(self.DEVICE)
             images =  [image.reshape(3,image.shape[0],image.shape[1]) for image in images]
-            images = list(image.to(DEVICE) for image in images)
-            targets = [{k: v.to(DEVICE) for k, v in t.items()} for t in targets]
+            # images = list(image.to(DEVICE) for image in images)
+            targets = [{k: v.to(self.DEVICE) for k, v in t.items()} for t in targets]
             
             with torch.no_grad():
                 loss_dict = self.model(images, targets)
